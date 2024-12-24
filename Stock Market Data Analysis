@@ -1,0 +1,90 @@
+import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from statsmodels.tsa.seasonal import seasonal_decompose
+
+# Download historical stock data for a company (e.g., Apple)
+stock_symbol = 'AAPL'
+data = yf.download(stock_symbol, start='2015-01-01', end='2023-12-31')
+
+# View the first few rows
+print(data.head())
+
+# Basic statistics
+print(data.describe())
+
+# Check for missing values
+print(data.isnull().sum())
+
+# Visualize closing prices
+plt.figure(figsize=(12, 6))
+plt.plot(data['Close'], label=f'{stock_symbol} Closing Price', color='blue')
+plt.title(f'{stock_symbol} Stock Closing Prices')
+plt.xlabel('Date')
+plt.ylabel('Price (USD)')
+plt.legend()
+plt.grid()
+plt.show()
+
+# Add moving averages to the dataset
+data['MA20'] = data['Close'].rolling(window=20).mean()  # 20-day moving average
+data['MA50'] = data['Close'].rolling(window=50).mean()  # 50-day moving average
+
+# Plot moving averages
+plt.figure(figsize=(12, 6))
+plt.plot(data['Close'], label='Close Price', color='blue')
+plt.plot(data['MA20'], label='20-Day MA', color='green')
+plt.plot(data['MA50'], label='50-Day MA', color='red')
+plt.title(f'{stock_symbol} Moving Averages')
+plt.xlabel('Date')
+plt.ylabel('Price (USD)')
+plt.legend()
+plt.grid()
+plt.show()
+
+# Visualize volume trends
+plt.figure(figsize=(12, 6))
+sns.barplot(x=data.index[-30:], y=data['Volume'][-30:], color='purple')
+plt.title(f'{stock_symbol} Trading Volume (Last 30 Days)')
+plt.xlabel('Date')
+plt.ylabel('Volume')
+plt.xticks(rotation=45)
+plt.show()
+
+# Perform seasonal decomposition
+decomposition = seasonal_decompose(data['Close'], model='multiplicative', period=252)  # Approx 252 trading days/year
+
+# Plot decomposition results
+plt.figure(figsize=(12, 8))
+decomposition.plot()
+plt.suptitle(f'{stock_symbol} Seasonal Decomposition')
+plt.show()
+
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+# Train-test split
+train = data['Close'][:-60]  # Training on all but the last 60 days
+test = data['Close'][-60:]  # Testing on the last 60 days
+
+# Build an exponential smoothing model
+model = ExponentialSmoothing(train, trend='add', seasonal=None, seasonal_periods=None)
+fitted_model = model.fit()
+
+# Predict future prices
+predictions = fitted_model.forecast(60)
+
+# Plot actual vs predicted prices
+plt.figure(figsize=(12, 6))
+plt.plot(train, label='Training Data', color='blue')
+plt.plot(test, label='Actual Prices', color='green')
+plt.plot(test.index, predictions, label='Predicted Prices', color='red')
+plt.title(f'{stock_symbol} Price Prediction')
+plt.xlabel('Date')
+plt.ylabel('Price (USD)')
+plt.legend()
+plt.grid()
+plt.show()
+
+
+
